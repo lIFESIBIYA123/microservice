@@ -1,0 +1,41 @@
+
+
+
+servers:
+ - url: http:/ /localhost:8000
+   description: URL for local development and testing
+ - url: https:/ /coffeemesh.com
+   description: main production server
+ - url: https:/ /coffeemesh-staging.com
+   description: staging server for testing purposes only
+
+GetOrderSchema:
+  additionalProperties: false
+  type: object
+  required:
+    - order
+    - id
+    - created
+    - status
+
+  properties:
+    id:
+      type: string
+      formst: uuid
+      
+      
+paths:
+  /orders:
+    get:
+      parameters:
+        - name: cancelled
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+

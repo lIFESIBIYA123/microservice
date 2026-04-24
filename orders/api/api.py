@@ -1,7 +1,7 @@
 # api.py
 from datetime import datetime
 from http import HTTPStatus          
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from starlette.responses import Response
 from starlette import status
@@ -10,13 +10,14 @@ from fastapi import APIRouter
 from orders.api.schemas import (
     CreateOrderSchema,
     GetOrderSchema,
-    
+    GetOrdersSchema,
     )
 from fastapi import HTTPException
+from typing import Optional
 
 router = APIRouter()
 
-ORDERS = [] # werepresent our in-memory list of orders as python list
+ORDERS = []
 order = {
     'id': 'ff0f1355-e821-4178-9567-550dec27a373',
     'status': 'delivered',
@@ -30,23 +31,41 @@ order = {
         }
     ]
 }
-# @app.get("/")
-# def root():
-#     return {"message": "Orders service is running"}
 
-@app.get('/orders', response_model=GetOrderSchema)
-def get_orders():
-    return ORDERS  # to return the list of the orders, we simply return the ORDERS list      
+@app.get('/orders', response_model=GetOrdersSchema)
+def get_orders(cancelled: Optional[bool] = None, limit: Optional[int] = None):
+    if cancelled is None and limit is None:
+        return {'orders': ORDERS}
+    
+    query_set = [order for order in ORDERS]
+    
+    if cancelled is not None:
+        if cancelled:
+            query_set = [
+                order
+                for order in query_set
+                if order['status'] == 'cancelled'
+            ]
+        
+        else: 
+            query_set = [
+                order
+                for order in query_set
+                if order['status'] != 'cancelled'
+            ]
+            
+    if limit is not None and len(query_set) > limit:
+        return {'orders': query_set[:limit]}
+    return {'orders': query_set}
+
 
 @app.post('/orders', 
           status_code=status.HTTP_201_CREATED,
           response_model=GetOrderSchema,
           )
-
 def create_order(order_details: CreateOrderSchema):
-    # transfere every order into a dictionary
     order = order_details.dict()
-    order['id'] = uuid.uuid4()
+    order['id'] = uuid4()
     order['created'] = datetime.utcnow()
     order['status'] = 'created'
     ORDERS.append(order)
@@ -59,7 +78,7 @@ def get_order(order_id: UUID):
             return order
         
     raise HTTPException(
-        status_code=404, details=f'Order with ID {order_id} not found'
+        status_code=404, detail=f'Order with ID {order_id} not found'
     )
 
 @app.put('/orders/{order_id}', response_model=GetOrderSchema)
